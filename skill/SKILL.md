@@ -17,15 +17,36 @@ Google Sheets: https://docs.google.com/spreadsheets/d/1Wl3T8dh70Cb9mCH65igZetBdN
 Python scripts: bundled in scripts/
 ```
 
-## Mandatory Pre-Flight
+## ⚠️ CRITICAL: Image Analysis
 
-**Before EVERY operation, fetch SCHEMA.md from GitHub:**
+**DeepSeek V4-Pro is TEXT-ONLY — it cannot see images.** When a user sends a receipt/notification image, NEVER use the `read` or `image` tool with DeepSeek. It will hallucinate numbers.
+
+**Always use OpenAI GPT-4o for image analysis:**
 
 ```bash
-curl -s https://raw.githubusercontent.com/ryoshin0830/expense-ledger/main/SCHEMA.md
+python3 scripts/ocr_receipt.py <image_path>
+python3 scripts/ocr_receipt.py <image_path> --json  # for programmatic use
 ```
 
-Never rely on memory or cached versions.
+The script:
+1. Sends the image to OpenAI GPT-4o (multimodal, high detail)
+2. Extracts: date, time, store, items, prices, total, currency, payment method
+3. Returns structured JSON for record.py
+
+## Mandatory Pre-Flight
+
+**Before EVERY operation:**
+1. Fetch SCHEMA.md from GitHub: `curl -s https://raw.githubusercontent.com/ryoshin0830/expense-ledger/main/SCHEMA.md`
+2. If user sent an image: **always** run `python3 scripts/ocr_receipt.py <image>` first — never interpret images directly
+
+## Workflow for AI
+
+1. **Image received? →** `python3 scripts/ocr_receipt.py <image>` (MANDATORY, use OpenAI)
+2. **Fetch SCHEMA.md** from GitHub
+3. **Read 設定 sheet** for valid master data values
+4. Parse details from OCR output or user message
+5. Run `scripts/record.py` with extracted data
+6. Confirm recording with JPY equivalent
 
 ## Recording a Transaction
 
@@ -86,11 +107,3 @@ python3 scripts/exchange_rate.py --currency USD CNY
 ```bash
 python3 scripts/setup_sheets.py
 ```
-
-## Workflow for AI
-
-1. **Fetch SCHEMA.md** from GitHub (mandatory)
-2. **Read 設定 sheet** for valid master data values
-3. Parse expense details from user message/image
-4. Run `scripts/record.py` with extracted data
-5. Confirm recording with JPY equivalent
