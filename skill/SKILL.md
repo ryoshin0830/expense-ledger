@@ -21,7 +21,7 @@ Python scripts: bundled in scripts/
 
 **DeepSeek V4-Pro is TEXT-ONLY — it cannot see images.** When a user sends a receipt/notification image, NEVER use the `read` or `image` tool with DeepSeek. It will hallucinate numbers.
 
-**Always use OpenAI GPT-4o for image analysis:**
+**Always use OpenAI GPT-5.4-mini (latest multimodal, fast & cheap) for image analysis:**
 
 ```bash
 python3 scripts/ocr_receipt.py <image_path>

@@ -27,7 +27,7 @@ def analyze_image(image_path, api_key):
         img_b64 = base64.b64encode(f.read()).decode()
 
     body = {
-        "model": "gpt-4o",
+        "model": "gpt-5.4-mini",
         "messages": [
             {
                 "role": "user",
@@ -61,7 +61,7 @@ def analyze_image(image_path, api_key):
                 ],
             }
         ],
-        "max_tokens": 1000,
+        "max_completion_tokens": 1000,
         "temperature": 0,
     }
 
