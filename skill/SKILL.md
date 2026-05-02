@@ -41,13 +41,14 @@ The script:
 
 ## Workflow for AI
 
-1. **Image received? →** `python3 scripts/ocr_receipt.py <image>` (MANDATORY, use OpenAI)
-2. **Fetch SCHEMA.md** from GitHub
-3. **Read 設定 sheet** for valid master data values
-4. Parse details from OCR output or user message
-5. **Fill missing fields by inference** — when OCR can't read 日付/支払方法/カテゴリ etc., infer from context (message time, typical patterns). **Always mark inferred values prominently** in the confirmation message with a clear indicator like ⚠️推測 or 📝推定
-6. Run `scripts/record.py` with extracted data
-7. Confirm recording — clearly separate **OCR読み取り** (from image) vs **推測** (inferred by AI)
+1. **Image received? →** `python3 scripts/ocr_receipt.py <image> --json` (MANDATORY, use OpenAI)
+2. **Check transaction count** — ocr_receipt.py now returns a JSON array. If it returns more than 1 transaction, you MUST record ALL of them. Never stop at the first one.
+3. **Fetch SCHEMA.md** from GitHub
+4. **Read 設定 sheet** for valid master data values
+5. Parse details from OCR output or user message
+6. **Fill missing fields by inference** — when OCR can't read 日付/支払方法/カテゴリ etc., infer from context (message time, typical patterns). **Always mark inferred values prominently** in the confirmation message with a clear indicator like ⚠️推測 or 📝推定
+7. Run `scripts/record.py` with extracted data for EACH transaction
+8. Confirm recording — clearly separate **📷 OCR読み取り** (from image) vs **⚠️ 推測** (inferred by AI)
 
 ## Recording a Transaction
 
