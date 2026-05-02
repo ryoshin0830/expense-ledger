@@ -35,20 +35,30 @@ def analyze_image(image_path, api_key):
                     {
                         "type": "text",
                         "text": (
-                            "この画像は支払いのレシートまたはカード利用通知です。"
-                            "以下の情報を正確に抽出し、JSON形式で返してください：\n"
-                            "{\n"
-                            '  "date": "YYYY-MM-DD または 不明",\n'
-                            '  "time": "HH:MM または 不明",\n'
-                            '  "store": "店舗名（正確に）",\n'
-                            '  "items": [{"name": "商品名", "price": 数字}],\n'
-                            '  "total": 合計金額（数字のみ）,'
-                            '  "currency": "JPY/USD/CNY等",\n'
-                            '  "payment": "現金/クレジット/電子マネー等（不明なら不明）",\n'
-                            '  "note": "画像の種類（レシート/カード通知/その他）や特記事項"\n'
-                            "}\n"
+                            "この画像は支払いのレシート、またはカード/決済アプリの取引一覧通知です。\n"
+                            "\n"
+                            "【最重要】画像内に複数の取引が表示されている場合、"
+                            "すべての取引を漏れなく抽出してください。"
+                            "カード通知や決済アプリのスクリーンショットでは、"
+                            "1枚の画像に複数の取引履歴がリスト表示されていることがよくあります。\n"
+                            "\n"
+                            "各取引を以下のJSON配列形式で返してください：\n"
+                            "[\n"
+                            "  {\n"
+                            '    "date": "YYYY-MM-DD または 不明",\n'
+                            '    "time": "HH:MM または 不明",\n'
+                            '    "store": "店舗名（正確に）",\n'
+                            '    "items": [{"name": "商品名", "price": 数字}],\n'
+                            '    "total": 合計金額（数字のみ）,\n'
+                            '    "currency": "JPY/USD/CNY等",\n'
+                            '    "payment": "現金/クレジット/電子マネー等（不明なら不明）",\n'
+                            '    "note": "画像の種類（レシート/カード通知/その他）や特記事項"\n'
+                            "  }\n"
+                            "]\n"
+                            "\n"
                             "数字は画像から一字一句正確に読み取ってください。"
                             "推測せず、読めない場合は「不明」としてください。"
+                            "画面に表示されている取引は、小さくても、スクロールの途中でも、すべて抽出してください。"
                         ),
                     },
                     {
@@ -80,12 +90,18 @@ def analyze_image(image_path, api_key):
     content = content.strip()
     if content.startswith("```"):
         content = content.split("\n", 1)[1]
-        if content.endswith("```"):
+        if content.rstrip().endswith("```"):
             content = content.rsplit("\n", 1)[0]
+        else:
+            content = content.rstrip("`")
         if content.startswith("json"):
             content = content.split("\n", 1)[1]
 
-    return json.loads(content)
+    result = json.loads(content)
+    # Normalize: always return a list of transactions
+    if isinstance(result, dict):
+        result = [result]
+    return result
 
 
 def main():
@@ -100,22 +116,25 @@ def main():
         sys.exit(1)
 
     api_key = get_api_key()
-    result = analyze_image(args.image, api_key)
+    transactions = analyze_image(args.image, api_key)
 
     if args.json:
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        print(json.dumps(transactions, indent=2, ensure_ascii=False))
     else:
-        print(f"🏪 {result.get('store', '不明')}")
-        print(f"📅 {result.get('date', '不明')} {result.get('time', '')}")
-        if result.get("items"):
-            for item in result["items"]:
-                print(f"   {item['name']}: ¥{item['price']:,}")
-        total = result.get("total", 0)
-        currency = result.get("currency", "JPY")
-        print(f"💰 合計: {currency} {total:,.0f}")
-        print(f"💳 支払方法: {result.get('payment', '不明')}")
-        if result.get("note"):
-            print(f"📝 {result['note']}")
+        print(f"📊 Found {len(transactions)} transaction(s):")
+        for i, txn in enumerate(transactions, 1):
+            print(f"\n--- Transaction {i} ---")
+            print(f"🏪 {txn.get('store', '不明')}")
+            print(f"📅 {txn.get('date', '不明')} {txn.get('time', '')}")
+            if txn.get("items"):
+                for item in txn["items"]:
+                    print(f"   {item['name']}: ¥{item['price']:,}")
+            total = txn.get("total", 0)
+            currency = txn.get("currency", "JPY")
+            print(f"💰 合計: {currency} {total:,.0f}")
+            print(f"💳 支払方法: {txn.get('payment', '不明')}")
+            if txn.get("note"):
+                print(f"📝 {txn['note']}")
 
 
 if __name__ == "__main__":
