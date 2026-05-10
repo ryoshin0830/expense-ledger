@@ -23,6 +23,14 @@
 | 14 | プロジェクト | TEXT | optional | Project/engagement name |
 | 15 | 備考 | TEXT | optional | Notes |
 | 16 | 作成日時 | TIMESTAMP | auto | ISO 8601 timestamp |
+| 17 | 収支 | SELECT | ✅ | 支出 / 収入 (default: 支出) |
+
+## Transaction Direction (収支)
+
+| Value | Description |
+|---|---|
+| 支出 | Expense (default for record.py) |
+| 収入 | Income (use `--direction 収入`) |
 
 ## Business Categories (事業区分)
 

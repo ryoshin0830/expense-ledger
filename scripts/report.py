@@ -44,14 +44,14 @@ def sheets_api(token, spreadsheet_id, path, method="GET", body=None):
 
 def read_all_transactions(spreadsheet_id):
     token = get_token()
-    range_enc = urllib.parse.quote("取引記録!A2:P")
+    range_enc = urllib.parse.quote("取引記録!A2:Q")
     result = sheets_api(token, spreadsheet_id, f"/values/{range_enc}")
     rows = result.get("values", [])
 
     headers = [
         "id", "日付", "場所", "品目", "金額", "通貨", "JPY換算", "為替レート",
         "支払方法", "カテゴリ", "事業区分", "経費区分", "精算状態",
-        "プロジェクト", "備考", "作成日時"
+        "プロジェクト", "備考", "作成日時", "収支"
     ]
 
     transactions = []
@@ -98,14 +98,18 @@ def main():
         return
 
     # Compute aggregates
-    total_jpy = 0
+    total_expense_jpy = 0
+    total_income_jpy = 0
     by_category = defaultdict(float)
     by_business = defaultdict(float)
     by_currency = defaultdict(lambda: {"count": 0, "total": 0})
     count_private = 0
     count_business = 0
+    count_income = 0
+    count_expense = 0
 
     for t in transactions:
+        direction = t.get("収支", "支出")
         # Use JPY換算 if available, else compute
         try:
             jpy_val = float(t["JPY換算"])
@@ -117,20 +121,24 @@ def main():
             except (ValueError, TypeError):
                 jpy_val = 0
 
-        total_jpy += jpy_val
-        by_category[t.get("カテゴリ", "不明")] += jpy_val
-        by_business[t.get("事業区分", "私用")] += jpy_val
-        ccy = t.get("通貨", "JPY")
-        by_currency[ccy]["count"] += 1
-        try:
-            by_currency[ccy]["total"] += float(t["金額"])
-        except (ValueError, TypeError):
-            pass
-
-        if t.get("経費区分") == "事業":
-            count_business += 1
-        elif t.get("経費区分") == "私用":
-            count_private += 1
+        if direction == "収入":
+            total_income_jpy += jpy_val
+            count_income += 1
+        else:
+            total_expense_jpy += jpy_val
+            count_expense += 1
+            by_category[t.get("カテゴリ", "不明")] += jpy_val
+            by_business[t.get("事業区分", "私用")] += jpy_val
+            ccy = t.get("通貨", "JPY")
+            by_currency[ccy]["count"] += 1
+            try:
+                by_currency[ccy]["total"] += float(t["金額"])
+            except (ValueError, TypeError):
+                pass
+            if t.get("経費区分") == "事業":
+                count_business += 1
+            elif t.get("経費区分") == "私用":
+                count_private += 1
 
     date_range = f"{transactions[0]['日付']} ~ {transactions[-1]['日付']}" if len(transactions) > 1 else transactions[0]["日付"]
 
@@ -138,7 +146,11 @@ def main():
         report = {
             "date_range": date_range,
             "transaction_count": len(transactions),
-            "total_jpy": round(total_jpy, 2),
+            "expense_count": count_expense,
+            "income_count": count_income,
+            "total_expense_jpy": round(total_expense_jpy, 2),
+            "total_income_jpy": round(total_income_jpy, 2),
+            "net_jpy": round(total_income_jpy - total_expense_jpy, 2),
             "by_category": dict(by_category),
             "by_business": dict(by_business),
             "by_currency": {k: dict(v) for k, v in by_currency.items()},
@@ -154,17 +166,22 @@ def main():
         print(f"  {title}")
         print(f"{'='*60}")
         print(f"  Period: {date_range}")
-        print(f"  Transactions: {len(transactions)}")
-        print(f"  Total: {format_jpy(total_jpy)}")
+        print(f"  Transactions: {len(transactions)} (支出: {count_expense}, 収入: {count_income})")
+        if count_income > 0:
+            print(f"  Income: +{format_jpy(total_income_jpy)}")
+        print(f"  Expense: -{format_jpy(total_expense_jpy)}")
+        net = total_income_jpy - total_expense_jpy
+        net_sign = "+" if net >= 0 else ""
+        print(f"  Net: {net_sign}{format_jpy(net)}")
         print()
-        print(f"  --- By Category ---")
+        print(f"  --- By Category (Expenses Only) ---")
         for cat, val in sorted(by_category.items(), key=lambda x: x[1], reverse=True):
-            pct = val / total_jpy * 100 if total_jpy > 0 else 0
+            pct = val / total_expense_jpy * 100 if total_expense_jpy > 0 else 0
             print(f"  {cat:12s}: {format_jpy(val):>12s} ({pct:5.1f}%)")
         print()
         print(f"  --- By Business Type ---")
         for biz, val in sorted(by_business.items(), key=lambda x: x[1], reverse=True):
-            pct = val / total_jpy * 100 if total_jpy > 0 else 0
+            pct = val / total_expense_jpy * 100 if total_expense_jpy > 0 else 0
             print(f"  {biz:12s}: {format_jpy(val):>12s} ({pct:5.1f}%)")
         print()
         print(f"  --- By Currency ---")

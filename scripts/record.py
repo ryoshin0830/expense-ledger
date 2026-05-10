@@ -72,6 +72,7 @@ def main():
     parser.add_argument("--settlement", default="不要", help="Settlement status (default: 不要)")
     parser.add_argument("--project", default="", help="Project name")
     parser.add_argument("--note", default="", help="Notes")
+    parser.add_argument("--direction", default="支出", choices=["支出", "収入"], help="Transaction direction: 支出 (expense, default) or 収入 (income)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     args = parser.parse_args()
 
@@ -100,11 +101,12 @@ def main():
         args.project,
         args.note,
         timestamp,
+        args.direction,
     ]
 
     # Append to sheet
     token = get_token()
-    range_enc = urllib.parse.quote("取引記録!A:P")
+    range_enc = urllib.parse.quote("取引記録!A:Q")
     body = {"values": [row]}
     result = sheets_api(token, args.spreadsheet_id, f"/values/{range_enc}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS",
                         method="POST", body=body)
@@ -127,7 +129,7 @@ def main():
     else:
         jpy_eq = round(args.amount * rate, 2)
         print(f"✅ Recorded: {args.date} | {args.place} | {args.item}")
-        print(f"   {args.amount} {args.currency} (≈¥{jpy_eq:,.0f}) | {args.category} | {args.payment}")
+        print(f"   {args.amount} {args.currency} (≈¥{jpy_eq:,.0f}) | {args.category} | {args.payment} | {args.direction}")
         print(f"   ID: {record_id}")
 
 

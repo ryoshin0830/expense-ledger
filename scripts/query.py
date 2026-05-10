@@ -42,14 +42,14 @@ def sheets_api(token, spreadsheet_id, path, method="GET", body=None):
 
 def read_all_transactions(spreadsheet_id):
     token = get_token()
-    range_enc = urllib.parse.quote("取引記録!A2:P")
+    range_enc = urllib.parse.quote("取引記録!A2:Q")
     result = sheets_api(token, spreadsheet_id, f"/values/{range_enc}")
     rows = result.get("values", [])
 
     headers = [
         "id", "日付", "場所", "品目", "金額", "通貨", "JPY換算", "為替レート",
         "支払方法", "カテゴリ", "事業区分", "経費区分", "精算状態",
-        "プロジェクト", "備考", "作成日時"
+        "プロジェクト", "備考", "作成日時", "収支"
     ]
 
     transactions = []
@@ -74,6 +74,7 @@ def main():
     parser.add_argument("--item", help="Filter by item (partial match)")
     parser.add_argument("--settlement", help="Filter by settlement status")
     parser.add_argument("--project", help="Filter by project")
+    parser.add_argument("--direction", choices=["支出", "収入"], help="Filter by transaction direction")
     parser.add_argument("--aggregate", choices=["category", "currency", "business", "month"], help="Aggregate by field")
     parser.add_argument("--limit", type=int, default=100000, help="Max results (default: 100000)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
@@ -99,6 +100,8 @@ def main():
         filtered = [t for t in filtered if t["精算状態"] == args.settlement]
     if args.project:
         filtered = [t for t in filtered if args.project.lower() in (t.get("プロジェクト", "") or "").lower()]
+    if args.direction:
+        filtered = [t for t in filtered if t.get("収支", "支出") == args.direction]
 
     if args.aggregate:
         agg = {}
