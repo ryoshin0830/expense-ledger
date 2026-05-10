@@ -1,6 +1,6 @@
 ---
 name: expense-ledger
-description: Multi-currency expense tracking via Google Sheets. Record, query, and report on transactions — どこで何をいくら何で買ったのか. Use when the user sends expense screenshots (receipts, payment confirmations), mentions spending money, wants to record a transaction, search expenses, or generate monthly reports. Triggers on 記帳, 支出, 経費, expense, receipt, レシート, 領収書, report, レポート, 月次, or any spending/payment recording. Also handles exchange rate lookups and multi-currency conversion to JPY.
+description: Multi-currency expense tracking via Google Sheets. Record, query, and report on transactions — どこで何をいくら何で買ったのか. Use when the user sends expense screenshots (receipts, payment confirmations), WeChat Pay / Alipay Excel exports (.xlsx), mentions spending money, wants to record a transaction, search expenses, or generate monthly reports. Triggers on 記帳, 記録, 支出, 経費, expense, receipt, レシート, 領収書, report, レポート, 月次, or any spending/payment recording. Also handles exchange rate lookups and multi-currency conversion to JPY.
 ---
 
 # Expense Ledger
@@ -109,3 +109,56 @@ python3 scripts/exchange_rate.py --currency USD CNY
 ```bash
 python3 scripts/setup_sheets.py
 ```
+
+## ⚙️ Config Setup (Google Credentials)
+
+The query/record scripts read Google OAuth credentials from `~/.openclaw/openclaw.json`. This file may not exist by default — the credentials live in `~/.hermes/.env`.
+
+**If scripts fail with `FileNotFoundError: openclaw.json`**, create the config:
+
+```bash
+mkdir -p ~/.openclaw
+# Extract GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN from ~/.hermes/.env
+# and create ~/.openclaw/openclaw.json with env.vars containing all three
+```
+
+## Batch Import from Payment Platform Exports
+
+When user sends an Excel/CSV export from WeChat Pay (微信支付) or Alipay:
+
+### Workflow
+
+1. **Parse the file** — use system `python3` via subprocess (NOT execute_code — sandbox lacks openpyxl):
+   ```python
+   subprocess.run(["/usr/bin/python3", "-c", "..."], ...)
+   ```
+2. **Fetch SCHEMA.md** from GitHub
+3. **Query existing records** for the date range: `python3 scripts/query.py --month YYYY-MM --json`
+4. **Deduplicate** — match by `(date, amount, currency)` tuple. If date+amount+currency matches, it's a duplicate.
+5. **Present summary** to user — show matched (skip), new expenses, refunded, income. Ask for confirmation before recording.
+6. **Record new expenses** via `scripts/record.py` for each non-duplicate expense.
+
+### Handling Special Transaction Types
+
+| Type | 微信支付 Status | Action |
+|---|---|---|
+| Normal expense | 支付成功 | Record normally |
+| Refunded expense | 已退款(¥X) / 已全额退款 | Record with `--note "全额返金済"` or skip (ask user) |
+| Income (red packet) | 已存入零钱 | Record as income or skip (ask user) |
+| Income (group collect) | 已存入零钱 | Record as income or skip (ask user) |
+| Income (merchant refund) | 已退款¥X | Do NOT record as expense — it's a reversal |
+
+### WeChat Pay Export Format
+
+Columns: 交易时间 | 交易类型 | 交易对方 | 商品 | 收/支 | 金额(元) | 支付方式 | 当前状态 | 交易单号 | 商户单号 | 备注
+
+Payment methods in export: 零钱=WeChat balance, 工商银行储蓄卡(4982)=ICBC debit card
+
+See `references/wechat-pay-export.md` for format details.
+
+## ⚠️ Pitfalls
+
+- **Sandbox Python ≠ system Python**: `execute_code` runs in a sandbox without openpyxl/pandas. Always use `/usr/bin/python3` via subprocess for Excel parsing.
+- **Config file location**: Scripts expect `~/.openclaw/openclaw.json`, not `~/.hermes/.env`. Create the file if missing.
+- **Refunds in export**: 微信支付 exports include both the original charge AND the refund as separate rows. The charge shows `已退款(¥X)`, the refund shows as an 收入 row. Handle both explicitly to avoid double-counting.
+- **Timestamp timezone**: 微信支付 export times are UTC+08:00 (China time). Convert dates to the date column (YYYY-MM-DD) carefully.

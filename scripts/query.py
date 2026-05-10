@@ -79,7 +79,7 @@ def main():
     parser.add_argument("--settlement", help="Filter by settlement status")
     parser.add_argument("--project", help="Filter by project")
     parser.add_argument("--aggregate", choices=["category", "currency", "business", "month"], help="Aggregate by field")
-    parser.add_argument("--limit", type=int, default=50, help="Max results (default: 50)")
+    parser.add_argument("--limit", type=int, default=100000, help="Max results (default: 100000)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     args = parser.parse_args()
 
