@@ -9,17 +9,14 @@ import urllib.request
 import urllib.parse
 import urllib.error
 
-CONFIG_PATH = os.path.expanduser("~/.hermes/auth.json")
 DEFAULT_SHEET_ID = "1Wl3T8dh70Cb9mCH65igZetBdNJpnUUHiumELlyeulAc"
 
 
 def get_token():
-    with open(CONFIG_PATH) as f:
-        cfg = json.load(f)
     data = urllib.parse.urlencode({
-        "client_id": cfg["GOOGLE_CLIENT_ID"],
-        "client_secret": cfg["GOOGLE_CLIENT_SECRET"],
-        "refresh_token": cfg["GOOGLE_REFRESH_TOKEN"],
+        "client_id": os.environ["GOOGLE_CLIENT_ID"],
+        "client_secret": os.environ["GOOGLE_CLIENT_SECRET"],
+        "refresh_token": os.environ["GOOGLE_REFRESH_TOKEN"],
         "grant_type": "refresh_token",
     }).encode()
     req = urllib.request.Request(

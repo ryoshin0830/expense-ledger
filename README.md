@@ -44,20 +44,18 @@ expense-ledger/
 
 ## Authentication Setup
 
-Scripts authenticate to Google Sheets API via OAuth 2.0 refresh token.
+Scripts authenticate to Google Sheets API via OAuth 2.0 refresh token and OpenAI API via API key.
 
-Place a JSON file at `~/.hermes/auth.json`:
+No config file needed — scripts read credentials from environment variables set by Hermes:
 
-```json
-{
-  "GOOGLE_CLIENT_ID": "xxx.apps.googleusercontent.com",
-  "GOOGLE_CLIENT_SECRET": "GOCSPX-xxx",
-  "GOOGLE_REFRESH_TOKEN": "1//xxx",
-  "OPENAI_API_KEY": "sk-..."
-}
-```
+| Env Var | Used By |
+|---|---|
+| `GOOGLE_CLIENT_ID` | `query.py` `record.py` `report.py` `setup_sheets.py` |
+| `GOOGLE_CLIENT_SECRET` | `query.py` `record.py` `report.py` `setup_sheets.py` |
+| `GOOGLE_REFRESH_TOKEN` | `query.py` `record.py` `report.py` `setup_sheets.py` |
+| `OPENAI_API_KEY` | `ocr_receipt.py` |
 
-The scripts (`query.py`, `record.py`, `ocr_receipt.py`, etc.) read this file automatically. No other config needed.
+All credentials are stored in `~/.hermes/.env`. Hermes passes them to subprocesses via `config.yaml` → `terminal.env_passthrough`.
 
 **Google Sheets ID**: `1Wl3T8dh70Cb9mCH65igZetBdNJpnUUHiumELlyeulAc`
 
