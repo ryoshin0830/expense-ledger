@@ -85,9 +85,9 @@ python3 scripts/record.py \
 
 ```bash
 python3 scripts/query.py --month 2026-05
+python3 scripts/query.py --month 2026-05 --json  # programmatic use — always pass --limit 100000 for multi-month exports
 python3 scripts/query.py --category 食費 --aggregate category
 python3 scripts/query.py --place "セブン"
-python3 scripts/query.py --json
 ```
 
 ## Reports
@@ -137,16 +137,26 @@ When user sends an Excel/CSV export from WeChat Pay (微信支付) or Alipay:
 4. **Deduplicate** — match by `(date, amount, currency)` tuple. If date+amount+currency matches, it's a duplicate.
 5. **Present summary** to user — show matched (skip), new expenses, refunded, income. Ask for confirmation before recording.
 6. **Record new expenses** via `scripts/record.py` for each non-duplicate expense.
+   - For **10+ transactions**: use **2-3 sub-agents** via `delegate_task` to record in parallel (split evenly, ~12-13 per agent). Each sub-agent runs `record.py` sequentially with all commands explicitly listed. This cuts total time from ~4 min to ~2 min.
+7. **Verify** — run `query.py --month YYYY-MM --json --limit 100000` to confirm total count = (previous count + new records). If count is off, a sub-agent may have missed some. Check `/subagents log <id>` for errors.
 
 ### Handling Special Transaction Types
 
 | Type | 微信支付 Status | Action |
 |---|---|---|
 | Normal expense | 支付成功 | Record normally |
-| Refunded expense | 已退款(¥X) / 已全额退款 | Record with `--note "全额返金済"` or skip (ask user) |
-| Income (red packet) | 已存入零钱 | Record as income or skip (ask user) |
-| Income (group collect) | 已存入零钱 | Record as income or skip (ask user) |
-| Income (merchant refund) | 已退款¥X | Do NOT record as expense — it's a reversal |
+| Refunded expense | 已退款(¥X) / 已全额退款 | **Skip — do NOT record.** Refunded transactions are excluded. |
+| Income (red packet) | 已存入零钱 | **Skip — income is not tracked** (expenses only) |
+| Income (group collect) | 已存入零钱 | **Skip — income is not tracked** |
+| Income (merchant refund) | 已退款¥X | **Skip — it's a reversal, not new money** |
+
+### Refund Policy (DEFINITIVE)
+
+- **Refunded transactions in payment exports → skip entirely** (do not record)
+- **Income of any kind** (red packets, group collections, merchant refunds) → **do not record** (expenses-only tracking)
+- **If a previously-recorded transaction gets refunded later → DELETE the original record** (do not modify/amend — delete it)
+
+Memory note: this policy is also stored in agent memory under `expense-ledger返金ポリシー`.
 
 ### WeChat Pay Export Format
 
@@ -160,5 +170,7 @@ See `references/wechat-pay-export.md` for format details.
 
 - **Sandbox Python ≠ system Python**: `execute_code` runs in a sandbox without openpyxl/pandas. Always use `/usr/bin/python3` via subprocess for Excel parsing.
 - **Config file location**: Scripts expect `~/.openclaw/openclaw.json`, not `~/.hermes/.env`. Create the file if missing.
-- **Refunds in export**: 微信支付 exports include both the original charge AND the refund as separate rows. The charge shows `已退款(¥X)`, the refund shows as an 收入 row. Handle both explicitly to avoid double-counting.
+- **Refunds in export**: 微信支付 exports include both the original charge AND the refund as separate rows. The charge shows `已退款(¥X)`, the refund shows as an 收入 row. Both are skipped per refund policy.
 - **Timestamp timezone**: 微信支付 export times are UTC+08:00 (China time). Convert dates to the date column (YYYY-MM-DD) carefully.
+- **query.py default limit**: Older versions default to `--limit 50`. When importing a month with 50+ transactions, always pass `--limit 100000` to get all records. The default was updated in the repo but local copies may be stale.
+- **DeepSeek V4-Pro cannot read images**: Never use `read` or `image` tools for receipt OCR — always route through `ocr_receipt.py` which uses OpenAI.

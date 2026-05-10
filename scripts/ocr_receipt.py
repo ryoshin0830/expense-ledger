@@ -8,13 +8,13 @@ import os
 import sys
 import urllib.request
 
-CONFIG_PATH = os.path.expanduser("~/.openclaw/openclaw.json")
+CONFIG_PATH = os.path.expanduser("~/.hermes/auth.json")
 
 
 def get_api_key():
     with open(CONFIG_PATH) as f:
         cfg = json.load(f)
-    return cfg["env"]["vars"]["OPENAI_API_KEY"]
+    return cfg["OPENAI_API_KEY"]
 
 
 def analyze_image(image_path, api_key):

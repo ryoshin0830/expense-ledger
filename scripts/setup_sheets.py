@@ -9,18 +9,17 @@ import urllib.request
 import urllib.parse
 import urllib.error
 
-CONFIG_PATH = os.path.expanduser("~/.openclaw/openclaw.json")
+CONFIG_PATH = os.path.expanduser("~/.hermes/auth.json")
 DEFAULT_SHEET_ID = "1Wl3T8dh70Cb9mCH65igZetBdNJpnUUHiumELlyeulAc"
 
 
 def get_token():
     with open(CONFIG_PATH) as f:
         cfg = json.load(f)
-    env = cfg["env"]["vars"]
     data = urllib.parse.urlencode({
-        "client_id": env["GOOGLE_CLIENT_ID"],
-        "client_secret": env["GOOGLE_CLIENT_SECRET"],
-        "refresh_token": env["GOOGLE_REFRESH_TOKEN"],
+        "client_id": cfg["GOOGLE_CLIENT_ID"],
+        "client_secret": cfg["GOOGLE_CLIENT_SECRET"],
+        "refresh_token": cfg["GOOGLE_REFRESH_TOKEN"],
         "grant_type": "refresh_token",
     }).encode()
     req = urllib.request.Request(

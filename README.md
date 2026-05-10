@@ -46,21 +46,18 @@ expense-ledger/
 
 Scripts authenticate to Google Sheets API via OAuth 2.0 refresh token.
 
-Place a JSON file at `~/.openclaw/openclaw.json`:
+Place a JSON file at `~/.hermes/auth.json`:
 
 ```json
 {
-  "env": {
-    "vars": {
-      "GOOGLE_CLIENT_ID": "xxx.apps.googleusercontent.com",
-      "GOOGLE_CLIENT_SECRET": "GOCSPX-xxx",
-      "GOOGLE_REFRESH_TOKEN": "1//xxx"
-    }
-  }
+  "GOOGLE_CLIENT_ID": "xxx.apps.googleusercontent.com",
+  "GOOGLE_CLIENT_SECRET": "GOCSPX-xxx",
+  "GOOGLE_REFRESH_TOKEN": "1//xxx",
+  "OPENAI_API_KEY": "sk-..."
 }
 ```
 
-The scripts (`query.py`, `record.py`, etc.) read this file automatically. No other config needed.
+The scripts (`query.py`, `record.py`, `ocr_receipt.py`, etc.) read this file automatically. No other config needed.
 
 **Google Sheets ID**: `1Wl3T8dh70Cb9mCH65igZetBdNJpnUUHiumELlyeulAc`
 
